@@ -1,0 +1,13 @@
+name: mystore_sdk
+description: Verified update checks for apps distributed by MyStore (signed manifests, staged rollout, required updates).
+version: 0.1.0
+repository: https://github.com/marvinboris/mystore-sdk
+environment:
+  sdk: ^3.5.0
+dependencies:
+  crypto: ^3.0.7
+  cryptography: ^2.9.0
+  http: ^1.2.0
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
