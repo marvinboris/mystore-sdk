@@ -83,8 +83,12 @@ switch (await updater.check(packageInfo.version)) {
 ```
 `storage` is required: implement `UpdaterStorage` with `shared_preferences` so the device id (staged rollout) and the anti-replay serial survive restarts. `Required` and `Available` are distinct types: handle `Required` explicitly.
 
+## Anonymous statistics
+
+Once per app per day, after a verified check, the SDK sends `{ app, version, platform, channel, device }` to MyStore, where `device` is `sha256(installId + ":" + app)`: a random id generated on the device, hashed separately for each app so apps cannot be linked together. No IP address, user agent, account or location is stored. It never blocks or fails your app. Opt out with `stats: false`.
+
 ## Options
 
-`baseUrl` (default `https://mystore-pied-sigma.vercel.app`), `channel` (`stable` | `beta`), `timeoutMs` / `timeout` (10 s), `pinnedKeys` (defaults to MyStore's production key), `storage` (JS: localStorage by default, pass AsyncStorage on React Native; Dart: required).
+`baseUrl` (default `https://mystore-pied-sigma.vercel.app`), `channel` (`stable` | `beta`), `timeoutMs` / `timeout` (10 s), `pinnedKeys` (defaults to MyStore's production key), `storage` (JS: localStorage by default, pass AsyncStorage on React Native; Dart: required), `stats` (default `true`).
 
 MIT licensed.

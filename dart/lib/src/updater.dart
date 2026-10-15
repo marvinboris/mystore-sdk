@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 import 'decide.dart';
 import 'keys.dart' as k;
@@ -102,9 +103,11 @@ class MyStoreUpdater {
   final http.Client _client;
   final Duration timeout;
   final DateTime Function() _now;
+  /// Anonymous daily ping (app, version, platform, channel, per-app hashed device id). Set false to opt out.
+  final bool stats;
 
   MyStoreUpdater({required this.app, required this.platform, required this.arch, this.channel = 'stable', this.baseUrl = defaultBaseUrl,
-      Map<String, String>? pinnedKeys, required UpdaterStorage storage, http.Client? client, this.timeout = const Duration(seconds: 10), DateTime Function()? now})
+      Map<String, String>? pinnedKeys, required UpdaterStorage storage, http.Client? client, this.timeout = const Duration(seconds: 10), DateTime Function()? now, this.stats = true})
       : keys = pinnedKeys ?? k.pinnedKeys,
         // Storage is required: an in-memory default would re-roll staged rollouts and forget the anti-replay serial on every launch.
         _store = _SafeStorage(storage),
@@ -124,6 +127,19 @@ class MyStoreUpdater {
     final id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
     await _store.set('mystore:installId', id);
     return id;
+  }
+
+  /// At most once per app per UTC day; fire-and-forget, never throws.
+  Future<void> _ping(String version) async {
+    if (!stats) return;
+    try {
+      final day = _now().toUtc().toIso8601String().substring(0, 10), key = 'mystore:$app:lastPing';
+      if (await _store.get(key) == day) return;
+      final device = crypto.sha256.convert(utf8.encode('${await installId()}:$app')).toString();
+      final res = await _client.post(Uri.parse('$baseUrl/api/ping/'), headers: {'content-type': 'application/json'},
+          body: jsonEncode({'app': app, 'version': version, 'platform': platform, 'channel': channel, 'device': device})).timeout(timeout);
+      if (res.statusCode >= 200 && res.statusCode < 300) await _store.set(key, day);
+    } catch (_) {}
   }
 
   /// Never throws for network or verification problems: returns [Unknown]. Throws [ArgumentError] for a non-semver [currentVersion].
@@ -147,6 +163,7 @@ class MyStoreUpdater {
     final v = await verifyManifest(json, keys, now: _now(), lastSerial: last, expectApp: app);
     if (!v.ok) return Unknown(v.reason!);
     await _store.set(serialKey, '${v.payload!['serial']}');
+    unawaited(_ping(currentVersion));
     final d = decideUpdate(v.payload!, UpdateQuery(channel: channel, currentVersion: currentVersion, platform: platform, arch: arch, installId: await installId()));
     switch (d.status) {
       case 'up-to-date':

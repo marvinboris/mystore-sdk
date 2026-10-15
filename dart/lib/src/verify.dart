@@ -38,7 +38,9 @@ bool isManifest(Object? m) {
   if (m is! Map || !_str(m['keyid']) || !_str(m['sig']) || m['signed'] is! Map) return false;
   final s = m['signed'] as Map;
   return s['schema'] == 1 && _str(s['app']) && _int(s['serial']) && _str(s['expires']) && s['channels'] is Map &&
-      _channel(s['channels']['stable']) && _channel(s['channels']['beta']);
+      _channel(s['channels']['stable']) && _channel(s['channels']['beta']) &&
+      (s['android'] == null || (s['android'] is Map && _str(s['android']['package'], 200) &&
+          s['android']['signerSha256'] is String && RegExp(r'^[0-9A-F]{64}$').hasMatch(s['android']['signerSha256'] as String)));
 }
 
 /// Same checks, same order as packages/core/src/verify.ts.

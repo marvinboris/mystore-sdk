@@ -11,6 +11,8 @@ export type UpdaterOptions = {
     fetch?: typeof fetch;
     timeoutMs?: number;
     now?: () => Date;
+    /** Anonymous daily ping (default true): app, version, platform, channel and a per-app hashed device id. */
+    stats?: boolean;
 };
 export type UpdateResult = {
     status: 'up-to-date';
